@@ -1,12 +1,12 @@
 # Hola
-
-#install.packages("shiny")
-#install.packages("ggplot2")
+install.packages("shiny")
+install.packages("ggplot2")
 library(shiny)
 library(shinythemes)
 library(ggplot2)
 library(quantmod)
 library(shinyjs)
+library(rmarkdown)
 
 ui <- fluidPage(
   theme = shinytheme('united'),
@@ -19,8 +19,11 @@ ui <- fluidPage(
                       sidebarLayout(
                         sidebarPanel(
                           dateInput("startDate", "Start Date", value = "2020-10-01", min = "2000-01-01"),
-                          dateInput("endDate", "End Date", value = "2021-01-01", min = "2000-01-01")
-                        ),
+                          dateInput("endDate", "End Date", value = "2021-01-01", min = "2000-01-01"),            
+                          #agregado los indicadores:
+                          checkboxInput("showMA", "Show Moving Average", value = FALSE),
+                          checkboxInput("showWMA", "Show Weighted Moving Average", value = FALSE)
+                          ),
                         mainPanel(
                           plotOutput("stockPlot")
                         )
@@ -47,14 +50,34 @@ server <- function(input, output, session) {
     # Fetch stock data
     getSymbols("QQQ", from = inicio, to = fin, src = "yahoo")
     
+    
+#--------------------------------------------    
     # Plotting the stock data
-    chartSeries(QQQ,
-                theme = chartTheme("white"),
-                name = "QQQ",  
-                TA = list("addBBands(n = 10)",
-                          "addVo()",
-                          "addEMA(64)",
-                          "addEMA(10, col = 2)"))
+#    chartSeries(QQQ,
+#                theme = chartTheme("white"),
+#                name = "QQQ",  
+#                TA = list("addBBands(n = 10)",
+#                          "addVo()",
+#                          "addEMA(64)",
+#                          "addEMA(10, col = 2)"))
+#------------------------------------------  
+   
+#---TODO ESTO ES AGREGADO DE LOS INDICADORES---------------------
+    
+    # Configura el gráfico y las técnicas de análisis
+    chart <- chartSeries(QQQ, theme = chartTheme("white"))
+#LAS BANDAS NO SE MUESTRAN 
+    addBBands(n = 20)  # Bollinger Bands
+    #addVo()            # Volumen del trading
+#ESTA NO FUNCIONA     
+    if (input$showMA) {
+      addEMA(QQQ, n = 10, col = "blue")  # Añade la EMA de 10 períodos en color azul
+    }
+#ESTA SI FUNCIONA 
+    if (input$showWMA) {
+      addWMA(n = 10, col = "red")  # Añade la WMA de 10 períodos en color rojo
+    }
+    
   })
 }
 
