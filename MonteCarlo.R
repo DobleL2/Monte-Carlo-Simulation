@@ -31,3 +31,5 @@ simulated_data_long$Day <- rep(1:n_days, each = n_sims)
 ggplot(simulated_data_long, aes(x = Day, y = Simulated_Price, group = Simulation)) +
   geom_line(alpha = 0.2, linewidth = 0.5) +
   labs(x = "Day", y = "Simulated Stock Price", title = "Monte Carlo Simulation of QQQ Stock Prices")
+
+
