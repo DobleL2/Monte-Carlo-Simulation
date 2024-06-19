@@ -12,7 +12,7 @@ ui <- fluidPage(
   theme = shinytheme('united'),
   navbarPage("Simulación de Monte Carlo en Finanzas",
              tabPanel("Inicio",
-                        includeMarkdown('Project_description.md')
+                        includeMarkdown('docs/Project_description.md')
                       ),
              tabPanel("Dashboard",
                       titlePanel("Interactive QQQ Stock Data Visualization"),
@@ -64,23 +64,26 @@ server <- function(input, output, session) {
    
 #---TODO ESTO ES AGREGADO DE LOS INDICADORES---------------------
     
-    # Configura el gráfico y las técnicas de análisis
+    # Configura el gráfico inicial
     chart <- chartSeries(QQQ, theme = chartTheme("white"))
-#LAS BANDAS NO SE MUESTRAN 
-    addBBands(n = 20)  # Bollinger Bands
-    #addVo()            # Volumen del trading
-#ESTA NO FUNCIONA     
+    
+    # Añade Bandas de Bollinger
+    addBBands(n = 20, on = 1)  # asegúrate de que el parámetro 'on' está correctamente asignado
+    
+    # Añade volumen de trading
+    addVo()
+    
+    # Condicionales para EMA y WMA
     if (input$showMA) {
-      addEMA(QQQ, n = 10, col = "blue")  # Añade la EMA de 10 períodos en color azul
+      addEMA(QQQ, n = 10, col = "blue", on = 1)  # Añade la EMA de 10 períodos en color azul
     }
-#ESTA SI FUNCIONA 
+    
     if (input$showWMA) {
-      addWMA(n = 10, col = "red")  # Añade la WMA de 10 períodos en color rojo
+      addWMA(QQQ, n = 10, col = "red", on = 1)  # Añade la WMA de 10 períodos en color rojo
     }
     
   })
 }
-
 
 shinyApp(ui = ui, server = server)
 
