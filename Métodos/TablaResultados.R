@@ -138,9 +138,7 @@ dataresume<- function(x){
 N <- length(QQQ$QQQ.Open)
 mu <- mu_sigma$mu
 sigma <- mu_sigma$sigma
-lambda <- lambda_delta_alpha$lambda
-delta <- lambda_delta_alpha$delta
-alpha <- lambda_delta_alpha$alpha
+
 valor_inicial <- as.numeric(QQQ$QQQ.Open[1])
 
 
@@ -231,6 +229,7 @@ data_actualizada_o<-dataresume(data_actualizada_valores)
 Data_Actualizada<-estrategias(data_actualizada_o)
 View(Data_Actualizada)
 
+
 tabla_capital<-function(Data_Actualizada){
 # Agregar una columna con valores aleatorios entre 0 y 10
 Data_Actualizada$Numero_de_acciones <- sample(0:5, nrow(df_resumen), replace = TRUE)
@@ -292,6 +291,17 @@ for (i in 1:nrow(Data_Actualizada)) {
 return(Data_Actualizada)
 }# fin de la funcion 
 
+lista <- list()
+for(i in 1:1000){
+  data_actualizada_valores<-simulate_GBM(valor_inicial, mu, sigma, T, dt)
+  data_actualizada_o<-dataresume(data_actualizada_valores)
+  Data_Actualizada<-estrategias(data_actualizada_o)
+  Dt<-tabla_capital(Data_Actualizada)
+  lista[[i]]<- Dt
+}
+lista
+
+save(lista,file = "simulaciones.RData")
 data_actualizada_valores<-simulate_GBM(valor_inicial, mu, sigma, T, dt)
 data_actualizada_o<-dataresume(data_actualizada_valores)
 Data_Actualizada<-estrategias(data_actualizada_o)
