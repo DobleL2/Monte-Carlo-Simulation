@@ -4,6 +4,7 @@ source("Métodos/Volatilidad_estocastica.R")
 source("Métodos/Parametros_volatilidad.R")
 source("Métodos/Parametro_media_ret_y_vola.R")
 source("Métodos/Varios.R")
+source("Métodos/Tablas_1.R")
 
 library(shiny)
 library(shinythemes)
@@ -63,35 +64,8 @@ ui <- fluidPage(
 
 
 server <- function(input, output, session) {
-  data_QQQ <- reactive({
-    # Data QQQ
-    fecha_inicio <- input$fecha[1]
-    fecha_fin <- input$fecha[2]
-    getSymbols("QQQ", src = "yahoo", from = fecha_inicio, to = fecha_fin)
-    
-    # Ejemplo de uso de la función
-    mu_sigma <- calculate_mu_sigma(fecha_inicio, fecha_fin)
-    lambda_delta_alpha <- estimate_jump_params(fecha_inicio, fecha_fin)
-    
-    # Asignación de parámetros de entrada estimados
-    N <- length(QQQ$QQQ.Open)
-    mu <- mu_sigma$mu
-    sigma <- mu_sigma$sigma
-    lambda <- lambda_delta_alpha$lambda
-    delta <- lambda_delta_alpha$delta
-    alpha <- lambda_delta_alpha$alpha
-    valor_inicial <- as.numeric(QQQ$QQQ.Open[1])
-    
-    
-    dt <- 1/252  # Un día de trading
-    datos_por_dia <- 10
-    T <- N*dt*datos_por_dia
-    
-    # Simular precios de la acción
-    simulated_prices <- simulate_GBM(valor_inicial, mu, sigma, T, dt)
-    
-    # Return the simulated prices to be used elsewhere in the Shiny app
-    simulated_prices
+  simulated <- reactive({
+
   })
   
   
@@ -116,8 +90,8 @@ server <- function(input, output, session) {
     }})
   output$plot2 <- renderPlotly({
     data <- data.frame(
-      x = 1:length(data_QQQ()),
-      y = data_QQQ()
+      x = 1:length(simulated()),
+      y = simulated()
     )
       p <- plot_ly(data, x = ~x, y = ~y)
       p
