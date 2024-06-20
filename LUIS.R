@@ -5,7 +5,7 @@ library(ggplot2)
 S0 <- 100  # Precio inicial
 mu <- 0.05  # Tasa de retorno esperada
 sigma <- 0.2  # Volatilidad
-T <- 1  # Periodo de tiempo en años
+T <- 3  # Periodo de tiempo en años
 dt <- 0.01  # Paso de tiempo
 N <- as.integer(T / dt) + 1  # Número de pasos, ajustado para incluir el último paso
 t <- seq(0, T, length.out = N)  # Vector de tiempo con la longitud ajustada
