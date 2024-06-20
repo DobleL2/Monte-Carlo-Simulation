@@ -299,16 +299,22 @@ Dt<-tabla_capital(Data_Actualizada)
 View(Dt)
 
 
-View(Data_Actualizada)
+library(ggplot2)
 
-# Suponemos que 'Data_Actualizada' ya está cargada y tiene las columnas necesarias
-ggplot(Data_Actualizada, aes(x = Dia)) +
+# Calcular las diferencias
+diferencia_capital1 <- Dt$Capital_final1[length(Dt$Capital_final1)] - Dt$Capital_inicial1[1]
+diferencia_capital2 <- Dt$Capital_final2[length(Dt$Capital_final2)] - Dt$Capital_inicial2[1]
+
+# Crear el gráfico
+ggplot(Dt, aes(x = Dia)) +
   geom_line(aes(y = Capital_final1, colour = "Capital Final 1"), size = 1) +
   geom_line(aes(y = Capital_final2, colour = "Capital Final 2"), size = 1) +
-  labs(title = "Evolución del Capital Final 1 y 2 en el Tiempo",
+  labs(title = paste("Evolución del Capital Final 1 y 2 en el Tiempo\n",
+                     "Diferencia Capital 1: ", round(diferencia_capital1, 2),
+                     " | Diferencia Capital 2: ", round(diferencia_capital2, 2)),
        x = "Fecha",
        y = "Capital ($)",
-       colour = "Legenda") +
+       colour = "Leyenda") +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotar las etiquetas del eje x para mejor visualización
 
