@@ -1,5 +1,3 @@
-source("Métodos/GBM.R")
-
 calculate_SMA <- function(prices, n) {
   # Aplicar el filtro con la función stats::filter para evitar conflictos con dplyr o similar
   sma <- stats::filter(prices, rep(1/n, n), sides = 1)
@@ -112,11 +110,101 @@ dataresume<- function(x){
   df_resumen$DIn <- adx_result[,"DIn"]
   df_resumen$DX <- adx_result[,"DX"]  # ajusta según el nombre real si es diferente
   
+  # Calcular el MACD para ver la estructura del resultado
+  macd_result <- MACD(df_resumen$Precio_cierre, nFast = 12, nSlow = 26, nSig = 9)
+  
+  # Verificar cuántas columnas hay y ajustar el código según eso
+  if (is.matrix(macd_result)) {
+    if (ncol(macd_result) == 2) {
+      df_resumen$MACD <- macd_result[, 1]
+      df_resumen$Signal <- macd_result[, 2]
+      # Calcular el histograma manualmente como la diferencia entre MACD y Signal
+      df_resumen$Histogram <- macd_result[, 1] - macd_result[, 2]
+    } else {
+      stop("El número de columnas en la matriz MACD no es el esperado.")
+    }
+  } else {
+    stop("El resultado de MACD no es una matriz.")
+  }
+  
+  # Asumiendo que df_resumen tiene una columna 'Precio_cierre'
+  df_resumen$RSI <- RSI(df_resumen$Precio_cierre, n = 14)
+  
   return(df_resumen)
   
 }
 
-table_from_data <- function(fecha_inicio,fecha_fin){
+estrategias<-function(df_resumen){
+  df_resumen1<-df_resumen
+  #--------------------------------------------------------------------------------------------Analisis de HMA
+  # Asumiendo que df_resumen1 es ya una copia de df_resumen y está cargado en tu sesión
+  # Crear la nueva columna basada en la columna 'HMA'
+  df_resumen1$HMA_change <- c(0, diff(df_resumen1$HMA))
+  
+  # Asignar 1 si el cambio es positivo, -1 si es negativo, 0 si es cero o NA
+  df_resumen1$HMA_signal <- ifelse(is.na(df_resumen1$HMA_change), 0, 
+                                   ifelse(df_resumen1$HMA_change > 0, 1,
+                                          ifelse(df_resumen1$HMA_change < 0, -1, 0)))
+  #-------------------------------------------------------------------------------------Analisis del DIP Y DIN
+  
+  # Agregar la columna nueva basada en la comparación entre 'DIp' y 'DIn'
+  df_resumen1$DI_Comparison <- ifelse(is.na(df_resumen1$DIp) | is.na(df_resumen1$DIn), 0, 
+                                      ifelse(df_resumen1$DIp > df_resumen1$DIn, 1,
+                                             ifelse(df_resumen1$DIp < df_resumen1$DIn, -1, 0)))
+  #-------------------------------------------------------------------------------------------Analisis del ADX
+  
+  # Agregar una columna nueva basada en los valores de 'ADX'
+  df_resumen1$ADX_signal <- ifelse(is.na(df_resumen1$ADX) | df_resumen1$ADX == 25, 0, 
+                                   ifelse(df_resumen1$ADX > 25, 1, -1))
+  
+  #------------------------------------------------------------------------------------------------Estrategia 1
+  # Agregar la columna 'Tendencia' basada en 'HMA_signal', 'DI_Comparison', y 'ADX_signal'
+  df_resumen1$Tendencia <- apply(df_resumen1[, c("HMA_signal", "DI_Comparison", "ADX_signal")], 1, function(x) {
+    if (all(x == 1)) {return(1)
+    } else if (all(x == -1)) {
+      return(-1)
+    } else {
+      return(0)
+    }
+  })
+  
+  #------------------------------------------------------------------------------------------Analisis de MACD
+  # Agregar la nueva columna basada en la comparación entre 'MACD' y 'Signal'
+  df_resumen1$MACD_Signal_Comparison <- ifelse(is.na(df_resumen1$MACD) | is.na(df_resumen1$Signal), 0,
+                                               ifelse(df_resumen1$MACD > df_resumen1$Signal, 1,
+                                                      ifelse(df_resumen1$MACD < df_resumen1$Signal, -1, 0)))
+  
+  #------------------------------------------------------------------------------------------Analisis de RSI
+  # Agregar la nueva columna basada en la columna 'RSI'
+  df_resumen1$RSI_Signal <- ifelse(is.na(df_resumen1$RSI), 0,
+                                   ifelse(df_resumen1$RSI > 60, 1,
+                                          ifelse(df_resumen1$RSI < 40, -1, 0)))
+  #------------------------------------------------------------------------------------------------Estrategia 2
+  # Agregar la columna 'Tendencia_2' basada en la comparación de 'MACD_Signal_Comparison' y 'RSI_Signal'
+  df_resumen1$Tendencia_2 <- ifelse(is.na(df_resumen1$MACD_Signal_Comparison) | is.na(df_resumen1$RSI_Signal), 0,
+                                    ifelse(df_resumen1$MACD_Signal_Comparison == 1 & df_resumen1$RSI_Signal == 1, 1,
+                                           ifelse(df_resumen1$MACD_Signal_Comparison == -1 & df_resumen1$RSI_Signal == -1, -1, 0)))
+  
+  
+  #--------------------------------------------------------------------------------------------Inverir o no
+  df_resumen1$Inversion <- ifelse(df_resumen1$Tendencia == 1 & df_resumen1$Tendencia_2 == 1, 1,
+                                  ifelse(df_resumen1$Tendencia == -1 & df_resumen1$Tendencia_2 == -1, -1, 0))
+  
+  # Asegúrate de que las dimensiones de ambos dataframes coincidan
+  if(nrow(df_resumen) == nrow(df_resumen1)) {
+    # Actualizar df_resumen añadiendo las nuevas columnas de df_resumen1
+    df_resumen$Estrategia_1 <- df_resumen1$Tendencia
+    df_resumen$Estrategia_2 <- df_resumen1$Tendencia_2
+    df_resumen$Inversion <- df_resumen1$Inversion
+  } else {
+    stop("La cantidad de filas entre df_resumen y df_resumen1 no coincide.")
+  }
+  
+  return(df_resumen)
+}
+
+data_simulada <- function(fecha_inicio,fecha_fin){
+  
   # Data QQQ
   getSymbols("QQQ", src = "yahoo", from = fecha_inicio, to = fecha_fin)
   
@@ -138,11 +226,87 @@ table_from_data <- function(fecha_inicio,fecha_fin){
   datos_por_dia <- 10
   T <- N*dt*datos_por_dia
   
-  # Simular precios de la acción
-  simulated_prices <- simulate_GBM(valor_inicial, mu, sigma, T, dt)
-  table1 <- dataresume(simulated_prices)
-  # Return the simulated prices to be used elsewhere in the Shiny app
-  return(table1)
+  x <- simulate_GBM(valor_inicial,mu,sigma,T,dt)
+  tabla1 <- dataresume(x)
+  tabla1 <- estrategias(tabla1)
+  return(tabla1)
 }
 
+# Ejemplo de uso de la función
+#fecha_inicio <- "2022-01-01"
+#fecha_fin <- "2023-01-01"
+
+#a<-data_simulada(fecha_inicio,fecha_fin)
+#View(a)
+
+
+#n_sim <- 3
+#fecha_inicio <- "2022-01-01"
+#fecha_fin <- "2023-01-01"
+
+
+generar_simulaciones <- function(n_sim, fecha_inicio, fecha_fin) {
+  lista_tablas <- list()
+  getSymbols("QQQ", src = "yahoo", from = fecha_inicio, to = fecha_fin)
+  
+  # Dataframe para almacenar los valores específicos
+  df_valores <- data.frame(
+    
+    Fecha <- index(QQQ),
+    Original <- (QQQ$QQQ.Open + QQQ$QQQ.Close)/2
+  )
+  names(df_valores) <- c("Fecha", "Original")
+  # Bucle para generar las tablas y extraer la información
+  for (i in 1:n_sim) {
+    # Generamos la tabla
+    tabla_temporal <- data_simulada(fecha_inicio, fecha_fin)
+    
+    # Añadimos la tabla a la lista
+    lista_tablas[[i]] <- tabla_temporal
+    
+    # Extraemos la columna específica y la añadimos al dataframe
+    # Supongamos que queremos la columna 'valor'
+    df_valores[paste0("Simulacion_", i)] <- tabla_temporal[,'Precio_cierre'] 
+  }
+  
+  # Identificar dinámicamente las columnas que contienen simulaciones
+  columns_to_average <- grep("Simulacion", names(df_valores), value = TRUE)
+  
+  # Calcular la media de las columnas de simulación para cada fila y añadir como nueva columna
+  df_valores$Media <- rowMeans(df_valores[, columns_to_average])
+  # Retornamos una lista con la lista de tablas y el dataframe de valores
+  return(list("Tablas" = lista_tablas, "Valores" = df_valores))
+}
+
+# Ejemplo de uso de la función
+fecha_inicio <- "2022-01-01"
+fecha_fin <- "2023-01-01"
+n_sim <-3
+simulated <- generar_simulaciones(n_sim, fecha_inicio, fecha_fin)
+simulated$Valores
+data_long <- simulated$Valores %>%
+  pivot_longer(
+    cols = -Fecha,
+    names_to = "Variable",
+    values_to = "Valor"
+  )
+# Preparar el gráfico base
+p <- plot_ly()
+
+# Agregar trazas individualmente con colores y grosores específicos
+variables <- unique(data_long$Variable)
+gris <- rep("#E0E0E0",n_sim)
+colores <- c('blue', 'red')
+colores <- append(colores, gris, after=1)
+grosor <- rep(2,n_sim)
+grosores <- c(5,5)
+grosores <- append(grosores, grosor, after=1)# Grosor específico para Precio_Medio
+
+for (i in seq_along(variables)) {
+  p <- add_trace(p, data = filter(data_long, Variable == variables[i]), x = ~Fecha, y = ~Valor,
+                 type = 'scatter', mode = 'lines',
+                 line = list(color = colores[i], width = grosores[i]),
+                 name = variables[i])
+}
+p
 

@@ -13,21 +13,3 @@ simulate_GBM <- function(S0, mu, sigma, T, dt) {
   
   return(S)  # Retornar los precios simulados
 }
-
-# Parámetros de entrada
-S0 <- 100  # Precio inicial de la acción
-mu <- 0.05  # Tasa de retorno esperada
-sigma <- 0.2  # Volatilidad
-T <- 5  # Horizonte temporal de un año
-dt <- 1/252  # Un día de trading
-
-# Simular precios de la acción
-simulated_prices <- simulate_GBM(S0, mu, sigma, T, dt)
-
-# Opcional: Gráfico de los precios simulados
-if (require(ggplot2)) {
-  df <- data.frame(Time = seq(0, T-dt, by = dt), Stock_Price = simulated_prices[-length(simulated_prices)])
-  ggplot(df, aes(x = Time, y = Stock_Price)) + geom_line() + ggtitle("Simulated Stock Prices Using GBM Model")
-}
-
-length(simulated_prices[-length(simulated_prices)])

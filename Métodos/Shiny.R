@@ -37,7 +37,7 @@ ui <- fluidPage(
                          
                           #agregado los indicadores:
                           
-                          numericInput("nsim", label = h3("Numero de Simulaciones"), value = 1000),
+                          numericInput("nsim", label = h3("Numero de Simulaciones"), value = 3),
                           # Input: Seleccionar tipo de gráfico
                           selectInput("chartType", "Select chart type:",
                                       choices = c("Scatter Plot" = "scatter",
@@ -47,7 +47,7 @@ ui <- fluidPage(
                         mainPanel(
                           textOutput("rango"),
                           plotlyOutput("plot"),
-                          plotlyOutput("plot2")
+                          plotlyOutput("plot4")
                         )
                       )
              ),
@@ -64,11 +64,56 @@ ui <- fluidPage(
 
 
 server <- function(input, output, session) {
-  simulated <- reactive({
+  
 
+  output$plot4 <- renderPlotly({
+    simulated <- generar_simulaciones(input$nsim,input$fecha[1], input$fecha[2])
+    simulated$Valores
+    data_long <- simulated$Valores %>%
+      pivot_longer(
+        cols = -Fecha,
+        names_to = "Variable",
+        values_to = "Valor"
+      )
+    # Preparar el gráfico base
+    p <- plot_ly()
+    
+    # Agregar trazas individualmente con colores y grosores específicos
+    variables <- unique(data_long$Variable)
+    gris <- rep("#E0E0E0",n_sim)
+    colores <- c('blue', 'red')
+    colores <- append(colores, gris, after=1)
+    grosor <- rep(2,n_sim)
+    grosores <- c(5,5)
+    grosores <- append(grosores, grosor, after=1)# Grosor específico para Precio_Medio
+    
+    for (i in seq_along(variables)) {
+      p <- add_trace(p, data = filter(data_long, Variable == variables[i]), x = ~Fecha, y = ~Valor,
+                     type = 'scatter', mode = 'lines',
+                     line = list(color = colores[i], width = grosores[i]),
+                     name = variables[i])
+    }
+    p
   })
   
-  
+  output$plot3 <-renderPlotly({
+    # Convertir el dataframe a formato largo para plotly
+    data_long <- simulated() %>%
+      pivot_longer(
+        cols = -Fecha,
+        names_to = "Variable",
+        values_to = "Valor"
+      )
+    # Generar el gráfico con plotly
+    p <- plot_ly(data_long, x = ~Fecha, y = ~Valor, color = ~Variable, type = 'scatter', mode = 'lines',
+                 line = list(width = 2)) %>%
+      layout(title = "Precios de QQQ y Resultados de Simulaciones",
+             xaxis = list(title = "Fecha"),
+             yaxis = list(title = "Valor"),
+             colorway = c('black', 'blue', 'red', 'green', 'orange'))  # Colores para las series
+    
+    p
+  })
   
   output$rango <- renderText({
     paste("Has seleccionado desde", input$fecha[1], "hasta", input$fecha[2])
