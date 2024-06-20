@@ -201,15 +201,15 @@ estrategias<-function(df_resumen){
   
   
   #--------------------------------------------------------------------------------------------Inverir o no
-  df_resumen1$Inversion <- ifelse(df_resumen1$Tendencia == 1 & df_resumen1$Tendencia_2 == 1, 1,
-                                  ifelse(df_resumen1$Tendencia == -1 & df_resumen1$Tendencia_2 == -1, -1, 0))
+  #df_resumen1$Inversion <- ifelse(df_resumen1$Tendencia == 1 & df_resumen1$Tendencia_2 == 1, 1,
+   #                               ifelse(df_resumen1$Tendencia == -1 & df_resumen1$Tendencia_2 == -1, -1, 0))
   
   # Asegúrate de que las dimensiones de ambos dataframes coincidan
   if(nrow(df_resumen) == nrow(df_resumen1)) {
     # Actualizar df_resumen añadiendo las nuevas columnas de df_resumen1
     df_resumen$Estrategia_1 <- df_resumen1$Tendencia
     df_resumen$Estrategia_2 <- df_resumen1$Tendencia_2
-    df_resumen$Inversion <- df_resumen1$Inversion
+    #df_resumen$Inversion <- df_resumen1$Inversion
   } else {
     stop("La cantidad de filas entre df_resumen y df_resumen1 no coincide.")
   }
@@ -224,9 +224,81 @@ Estrategias_y<-estrategias(datay)
 View(Estrategias_y)
 
 
+#SIMULACION DE LOS PRECIOS 
 
+data_actualizada_valores<-simulate_GBM(valor_inicial, mu, sigma, T, dt)
+data_actualizada_o<-dataresume(data_actualizada_valores)
+Data_Actualizada<-estrategias(data_actualizada_o)
 
+# Agregar una columna con valores aleatorios entre 0 y 10
+Data_Actualizada$Numero_de_acciones <- sample(0:5, nrow(df_resumen), replace = TRUE)
 
+# Suponiendo que Data_Actualizada ya tiene las columnas necesarias y 'Numero_de_acciones'
+# y estableciendo un capital inicial
+capital_inicial <- 100000
+
+# Agregar la columna 'Capital_inicial1'
+Data_Actualizada$Capital_inicial1 <- 0
+Data_Actualizada$Capital_final1 <- 0
+
+# Establecer el capital inicial para la primera fila
+Data_Actualizada$Capital_inicial1[1] <- capital_inicial
+
+# Calcular 'Capital_final1' para cada fila basado en 'Estrategia_1'
+for (i in 1:nrow(Data_Actualizada)) {
+  if (i > 1) {
+    Data_Actualizada$Capital_inicial1[i] <- Data_Actualizada$Capital_final1[i - 1]
+  }
+  
+  if (Data_Actualizada$Estrategia_1[i] == 1) {
+    Data_Actualizada$Capital_final1[i] <- Data_Actualizada$Capital_inicial1[i] - Data_Actualizada$Precio_cierre[i] * Data_Actualizada$Numero_de_acciones[i]
+  } else if (Data_Actualizada$Estrategia_1[i] == -1) {
+    Data_Actualizada$Capital_final1[i] <- Data_Actualizada$Capital_inicial1[i] + Data_Actualizada$Precio_cierre[i] * Data_Actualizada$Numero_de_acciones[i]
+  } else {
+    Data_Actualizada$Capital_final1[i] <- Data_Actualizada$Capital_inicial1[i]
+  }
+}
+
+View(Data_Actualizada)
+plot(Data_Actualizada$Capital_final1)
+
+# y estableciendo un capital inicial para la estrategia 2
+capital_inicial_estrategia2 <- capital_inicial
+
+# Agregar las columnas 'Capital_inicial2' y 'Capital_final2'
+Data_Actualizada$Capital_inicial2 <- 0
+Data_Actualizada$Capital_final2 <- 0
+
+# Establecer el capital inicial para la estrategia 2 en la primera fila
+Data_Actualizada$Capital_inicial2[1] <- capital_inicial_estrategia2
+
+# Calcular 'Capital_final2' para cada fila basado en 'Estrategia_2'
+for (i in 1:nrow(Data_Actualizada)) {
+  if (i > 1) {
+    Data_Actualizada$Capital_inicial2[i] <- Data_Actualizada$Capital_final2[i - 1]
+  }
+  
+  if (Data_Actualizada$Estrategia_2[i] == 1) {
+    Data_Actualizada$Capital_final2[i] <- Data_Actualizada$Capital_inicial2[i] - Data_Actualizada$Precio_cierre[i] * Data_Actualizada$Numero_de_acciones[i]
+  } else if (Data_Actualizada$Estrategia_2[i] == -1) {
+    Data_Actualizada$Capital_final2[i] <- Data_Actualizada$Capital_inicial2[i] + Data_Actualizada$Precio_cierre[i] * Data_Actualizada$Numero_de_acciones[i]
+  } else {
+    Data_Actualizada$Capital_final2[i] <- Data_Actualizada$Capital_inicial2[i]
+  }
+}
+
+View(Data_Actualizada)
+
+# Suponemos que 'Data_Actualizada' ya está cargada y tiene las columnas necesarias
+ggplot(Data_Actualizada, aes(x = Dia)) +
+  geom_line(aes(y = Capital_final1, colour = "Capital Final 1"), size = 1) +
+  geom_line(aes(y = Capital_final2, colour = "Capital Final 2"), size = 1) +
+  labs(title = "Evolución del Capital Final 1 y 2 en el Tiempo",
+       x = "Fecha",
+       y = "Capital ($)",
+       colour = "Legenda") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotar las etiquetas del eje x para mejor visualización
 
 
 
