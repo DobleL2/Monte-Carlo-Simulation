@@ -27,10 +27,12 @@ valor_inicial <- as.numeric(QQQ$QQQ.Open[1])
 
 
 dt <- 1/252  # Un día de trading
-T <- N*dt  
+datos_por_dia <- 10
+T <- N*dt*datos_por_dia
 
 print(N)
 
 # Simular precios de la acción
 simulated_prices <- simulate_GBM(valor_inicial, mu, sigma, T, dt)
-simulated_prices
+length(simulated_prices)
+
