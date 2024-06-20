@@ -272,18 +272,155 @@ if (!require(TTR)) {
 }
 
 View(df_resume)
+library(TTR)
+library(TTR)
 
-# Calcular el MACD
-# MACD utiliza dos períodos para las EMAs: usualmente 12 y 26 días para las medias rápidas y lentas, y 9 días para la señal
+# Calcular el MACD para ver la estructura del resultado
 macd_result <- MACD(df_resumen$Precio_cierre, nFast = 12, nSlow = 26, nSig = 9)
+View(macd_result)
+# Verificar la estructura del resultado devuelto
+print(str(macd_result))
 
-# El resultado tiene tres componentes: la línea MACD, la línea de señal y el histograma
-df_resumen$MACD <- macd_result$macd  # La línea MACD
-df_resumen$Signal <- macd_result$signal  # La línea de señal
-df_resumen$Histogram <- macd_result$div  # El histograma (divergencia)
+# Verificar cuántas columnas hay y ajustar el código según eso
+if (is.matrix(macd_result)) {
+  if (ncol(macd_result) == 2) {
+    df_resumen$MACD <- macd_result[, 1]
+    df_resumen$Signal <- macd_result[, 2]
+    # Calcular el histograma manualmente como la diferencia entre MACD y Signal
+    df_resumen$Histogram <- macd_result[, 1] - macd_result[, 2]
+  } else {
+    stop("El número de columnas en la matriz MACD no es el esperado.")
+  }
+} else {
+  stop("El resultado de MACD no es una matriz.")
+}
 
-# Verificar los primeros valores del MACD calculado
-head(df_resumen[c("MACD", "Signal", "Histogram")])
+# Ver los primeros valores para confirmar que se ha añadido correctamente
+View(df_resumen[c("MACD", "Signal", "Histogram")])
+
+View(df_resumen)
+
+# Supongamos que tu figura ya está creada con velas japonesas y líneas MACD y de señal
+fig <- plot_ly(data = df_resumen, x = ~Dia) %>%
+  add_trace(type = "candlestick", open = ~Precio_apertura, close = ~Precio_cierre,
+            high = ~Precio_maximo, low = ~Precio_minimo, name = "Candlestick") %>%
+  layout(title = "Gráfico de Velas Japonesas con MACD",
+         xaxis = list(title = "Fecha"),
+         yaxis = list(title = "Precio"))
+
+# Añadir la línea MACD y la línea de señal
+fig <- fig %>%
+  add_trace(x = ~Dia, y = ~MACD, mode = 'lines', line = list(color = 'blue'), name = "MACD", yaxis = "y2") %>%
+  add_trace(x = ~Dia, y = ~Signal, mode = 'lines', line = list(color = 'red'), name = "Signal", yaxis = "y2")
+
+# Añadir el histograma del MACD en un eje Y adicional específicamente para él
+fig <- fig %>%
+  add_bars(x = ~Dia, y = ~Histogram, marker = list(color = 'orange'), name = "Histogram", yaxis = "y3")
+
+# Configuración del layout para añadir un tercer eje Y
+fig <- fig %>% layout(
+  yaxis2 = list(title = "MACD & Signal", overlaying = "y", side = "right", position = 0.85),
+  yaxis3 = list(title = "Histogram", overlaying = "y", side = "right", position = 0.95)
+)
+
+# Mostrar el gráfico
+fig
+
+# Instalar y cargar el paquete TTR si no está instalado
+if (!require(TTR)) {
+  install.packages("TTR")
+  library(TTR)
+}
+# Calcular el MACD para ver la estructura del resultado
+macd_result <- MACD(df_resumen$Precio_cierre, nFast = 12, nSlow = 26, nSig = 9)
+View(macd_result)
 
 
+# Calcular el RSI usando TTR
+# Asumiendo que df_resumen tiene una columna 'Precio_cierre'
+df_resumen$RSI <- RSI(df_resumen$Precio_cierre, n = 14)
 
+# Verificar los primeros valores del RSI calculado
+View(df_resumen)
+#ANALISIS DE COMPRA O VENTA
+#------------------------------------------------------------------------------
+
+y <- simulate_GBM(valor_inicial, mu, sigma, T, dt)
+View(y)
+data<-dataresume(y)
+View(data)
+#Data auxiliar-----------------------------------------------------------------
+df_resumen1<- data
+#--------------------------------------------------------------------------------------------Analisis de HMA
+# Asumiendo que df_resumen1 es ya una copia de df_resumen y está cargado en tu sesión
+# Crear la nueva columna basada en la columna 'HMA'
+df_resumen1$HMA_change <- c(0, diff(df_resumen1$HMA))
+
+# Asignar 1 si el cambio es positivo, -1 si es negativo, 0 si es cero o NA
+df_resumen1$HMA_signal <- ifelse(is.na(df_resumen1$HMA_change), 0, 
+                                 ifelse(df_resumen1$HMA_change > 0, 1,
+                                        ifelse(df_resumen1$HMA_change < 0, -1, 0)))
+#-------------------------------------------------------------------------------------Analisis del DIP Y DIN
+
+# Agregar la columna nueva basada en la comparación entre 'DIp' y 'DIn'
+df_resumen1$DI_Comparison <- ifelse(is.na(df_resumen1$DIp) | is.na(df_resumen1$DIn), 0, 
+                                    ifelse(df_resumen1$DIp > df_resumen1$DIn, 1,
+                                           ifelse(df_resumen1$DIp < df_resumen1$DIn, -1, 0)))
+#-------------------------------------------------------------------------------------------Analisis del ADX
+
+# Agregar una columna nueva basada en los valores de 'ADX'
+df_resumen1$ADX_signal <- ifelse(is.na(df_resumen1$ADX) | df_resumen1$ADX == 25, 0, 
+                                 ifelse(df_resumen1$ADX > 25, 1, -1))
+
+#------------------------------------------------------------------------------------------------Estrategia 1
+# Agregar la columna 'Tendencia' basada en 'HMA_signal', 'DI_Comparison', y 'ADX_signal'
+df_resumen1$Tendencia <- apply(df_resumen1[, c("HMA_signal", "DI_Comparison", "ADX_signal")], 1, function(x) {
+  if (all(x == 1)) {return(1)
+  } else if (all(x == -1)) {
+    return(-1)
+  } else {
+    return(0)
+  }
+})
+
+View(df_resumen1)
+
+#------------------------------------------------------------------------------------------Analisis de MACD
+# Agregar la nueva columna basada en la comparación entre 'MACD' y 'Signal'
+df_resumen1$MACD_Signal_Comparison <- ifelse(is.na(df_resumen1$MACD) | is.na(df_resumen1$Signal), 0,
+                                             ifelse(df_resumen1$MACD > df_resumen1$Signal, 1,
+                                                    ifelse(df_resumen1$MACD < df_resumen1$Signal, -1, 0)))
+
+#------------------------------------------------------------------------------------------Analisis de RSI
+# Agregar la nueva columna basada en la columna 'RSI'
+df_resumen1$RSI_Signal <- ifelse(is.na(df_resumen1$RSI), 0,
+                                 ifelse(df_resumen1$RSI > 60, 1,
+                                        ifelse(df_resumen1$RSI < 40, -1, 0)))
+#------------------------------------------------------------------------------------------------Estrategia 2
+# Agregar la columna 'Tendencia_2' basada en la comparación de 'MACD_Signal_Comparison' y 'RSI_Signal'
+df_resumen1$Tendencia_2 <- ifelse(is.na(df_resumen1$MACD_Signal_Comparison) | is.na(df_resumen1$RSI_Signal), 0,
+                                  ifelse(df_resumen1$MACD_Signal_Comparison == 1 & df_resumen1$RSI_Signal == 1, 1,
+                                         ifelse(df_resumen1$MACD_Signal_Comparison == -1 & df_resumen1$RSI_Signal == -1, -1, 0)))
+
+
+#--------------------------------------------------------------------------------------------Inverir o no
+df_resumen1$Inversion <- ifelse(df_resumen1$Tendencia == 1 & df_resumen1$Tendencia_2 == 1, 1,
+                                ifelse(df_resumen1$Tendencia == -1 & df_resumen1$Tendencia_2 == -1, -1, 0))
+
+# Mostrar los primeros valores para confirmar
+View(df_resumen1)
+
+# Asegúrate de que las dimensiones de ambos dataframes coincidan
+if(nrow(df_resumen) == nrow(df_resumen1)) {
+  # Actualizar df_resumen añadiendo las nuevas columnas de df_resumen1
+  df_resumen$Estrategia_1 <- df_resumen1$Tendencia
+  df_resumen$Estrategia_2 <- df_resumen1$Tendencia_2
+  df_resumen$Inversion <- df_resumen1$Inversion
+  
+  #Renombrar columnas en df_resumen si es necesario (ya renombrado al asignar)
+  names(df_resumen)[names(df_resumen) == "Tendencia"] <- "Estrategia_1"
+  names(df_resumen)[names(df_resumen) == "Tendencia_2"] <- "Estrategia_2"
+} else {
+  stop("La cantidad de filas entre df_resumen y df_resumen1 no coincide.")
+}
+View(df_resumen)
