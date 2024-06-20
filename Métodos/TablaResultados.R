@@ -110,6 +110,26 @@ dataresume<- function(x){
   df_resumen$DIn <- adx_result[,"DIn"]
   df_resumen$DX <- adx_result[,"DX"]  # ajusta según el nombre real si es diferente
   
+  # Calcular el MACD para ver la estructura del resultado
+  macd_result <- MACD(df_resumen$Precio_cierre, nFast = 12, nSlow = 26, nSig = 9)
+  
+  # Verificar cuántas columnas hay y ajustar el código según eso
+  if (is.matrix(macd_result)) {
+    if (ncol(macd_result) == 2) {
+      df_resumen$MACD <- macd_result[, 1]
+      df_resumen$Signal <- macd_result[, 2]
+      # Calcular el histograma manualmente como la diferencia entre MACD y Signal
+      df_resumen$Histogram <- macd_result[, 1] - macd_result[, 2]
+    } else {
+      stop("El número de columnas en la matriz MACD no es el esperado.")
+    }
+  } else {
+    stop("El resultado de MACD no es una matriz.")
+  }
+  
+  # Asumiendo que df_resumen tiene una columna 'Precio_cierre'
+  df_resumen$RSI <- RSI(df_resumen$Precio_cierre, n = 14)
+  
   return(df_resumen)
   
 }
@@ -128,18 +148,80 @@ dt <- 1/252  # Un día de trading
 datos_por_dia <- 10
 T <- N*dt*datos_por_dia
 
-x <- simulate_GBM(valor_inicial, mu, sigma, T, dt)
-View(x)
+estrategias<-function(df_resumen){
+  df_resumen1<-df_resumen
+  #--------------------------------------------------------------------------------------------Analisis de HMA
+  # Asumiendo que df_resumen1 es ya una copia de df_resumen y está cargado en tu sesión
+  # Crear la nueva columna basada en la columna 'HMA'
+  df_resumen1$HMA_change <- c(0, diff(df_resumen1$HMA))
+  
+  # Asignar 1 si el cambio es positivo, -1 si es negativo, 0 si es cero o NA
+  df_resumen1$HMA_signal <- ifelse(is.na(df_resumen1$HMA_change), 0, 
+                                   ifelse(df_resumen1$HMA_change > 0, 1,
+                                          ifelse(df_resumen1$HMA_change < 0, -1, 0)))
+  #-------------------------------------------------------------------------------------Analisis del DIP Y DIN
+  
+  # Agregar la columna nueva basada en la comparación entre 'DIp' y 'DIn'
+  df_resumen1$DI_Comparison <- ifelse(is.na(df_resumen1$DIp) | is.na(df_resumen1$DIn), 0, 
+                                      ifelse(df_resumen1$DIp > df_resumen1$DIn, 1,
+                                             ifelse(df_resumen1$DIp < df_resumen1$DIn, -1, 0)))
+  #-------------------------------------------------------------------------------------------Analisis del ADX
+  
+  # Agregar una columna nueva basada en los valores de 'ADX'
+  df_resumen1$ADX_signal <- ifelse(is.na(df_resumen1$ADX) | df_resumen1$ADX == 25, 0, 
+                                   ifelse(df_resumen1$ADX > 25, 1, -1))
+  
+  #------------------------------------------------------------------------------------------------Estrategia 1
+  # Agregar la columna 'Tendencia' basada en 'HMA_signal', 'DI_Comparison', y 'ADX_signal'
+  df_resumen1$Tendencia <- apply(df_resumen1[, c("HMA_signal", "DI_Comparison", "ADX_signal")], 1, function(x) {
+    if (all(x == 1)) {return(1)
+    } else if (all(x == -1)) {
+      return(-1)
+    } else {
+      return(0)
+    }
+  })
+  
+  #------------------------------------------------------------------------------------------Analisis de MACD
+  # Agregar la nueva columna basada en la comparación entre 'MACD' y 'Signal'
+  df_resumen1$MACD_Signal_Comparison <- ifelse(is.na(df_resumen1$MACD) | is.na(df_resumen1$Signal), 0,
+                                               ifelse(df_resumen1$MACD > df_resumen1$Signal, 1,
+                                                      ifelse(df_resumen1$MACD < df_resumen1$Signal, -1, 0)))
+  
+  #------------------------------------------------------------------------------------------Analisis de RSI
+  # Agregar la nueva columna basada en la columna 'RSI'
+  df_resumen1$RSI_Signal <- ifelse(is.na(df_resumen1$RSI), 0,
+                                   ifelse(df_resumen1$RSI > 60, 1,
+                                          ifelse(df_resumen1$RSI < 40, -1, 0)))
+  #------------------------------------------------------------------------------------------------Estrategia 2
+  # Agregar la columna 'Tendencia_2' basada en la comparación de 'MACD_Signal_Comparison' y 'RSI_Signal'
+  df_resumen1$Tendencia_2 <- ifelse(is.na(df_resumen1$MACD_Signal_Comparison) | is.na(df_resumen1$RSI_Signal), 0,
+                                    ifelse(df_resumen1$MACD_Signal_Comparison == 1 & df_resumen1$RSI_Signal == 1, 1,
+                                           ifelse(df_resumen1$MACD_Signal_Comparison == -1 & df_resumen1$RSI_Signal == -1, -1, 0)))
+  
+  
+  #--------------------------------------------------------------------------------------------Inverir o no
+  df_resumen1$Inversion <- ifelse(df_resumen1$Tendencia == 1 & df_resumen1$Tendencia_2 == 1, 1,
+                                  ifelse(df_resumen1$Tendencia == -1 & df_resumen1$Tendencia_2 == -1, -1, 0))
+  
+  # Asegúrate de que las dimensiones de ambos dataframes coincidan
+  if(nrow(df_resumen) == nrow(df_resumen1)) {
+    # Actualizar df_resumen añadiendo las nuevas columnas de df_resumen1
+    df_resumen$Estrategia_1 <- df_resumen1$Tendencia
+    df_resumen$Estrategia_2 <- df_resumen1$Tendencia_2
+    df_resumen$Inversion <- df_resumen1$Inversion
+  } else {
+    stop("La cantidad de filas entre df_resumen y df_resumen1 no coincide.")
+  }
+  
+  return(df_resumen)
+}
 
-View(dataresume(x))
 
-
-
-
-
-
-
-
+y<- simulate_GBM(valor_inicial, mu, sigma, T, dt)
+datay<-dataresume(y)
+Estrategias_y<-estrategias(datay)
+View(Estrategias_y)
 
 
 
