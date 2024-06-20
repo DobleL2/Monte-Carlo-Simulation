@@ -1,6 +1,4 @@
 
-
-#setwd(getwd())
 source("Métodos/GBM.R")
 source("Métodos/Volatilidad_estocastica.R")
 source("Métodos/Parametros_volatilidad.R")
@@ -8,8 +6,8 @@ source("Métodos/Parametro_media_ret_y_vola.R")
 source("Métodos/Varios.R")
 
 # Ejemplo de uso de la función
-fecha_inicio <- "2023-01-01"
-fecha_fin <- "2024-01-01"
+fecha_inicio <- "2022-01-01"
+fecha_fin <- "2023-01-01"
 
 # Data QQQ
 getSymbols("QQQ", src = "yahoo", from = fecha_inicio, to = fecha_fin)
@@ -29,12 +27,14 @@ valor_inicial <- as.numeric(QQQ$QQQ.Open[1])
 
 
 dt <- 1/252  # Un día de trading
-T <- N*dt  
+datos_por_dia <- 10
+T <- N*dt*datos_por_dia
 
 print(N)
 
 # Simular precios de la acción
 simulated_prices <- simulate_GBM(valor_inicial, mu, sigma, T, dt)
+length(simulated_prices)
 
 # Opcional: Gráfico de los precios simulados
 if (require(ggplot2)) {
