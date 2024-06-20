@@ -229,7 +229,9 @@ View(Estrategias_y)
 data_actualizada_valores<-simulate_GBM(valor_inicial, mu, sigma, T, dt)
 data_actualizada_o<-dataresume(data_actualizada_valores)
 Data_Actualizada<-estrategias(data_actualizada_o)
+View(Data_Actualizada)
 
+tabla_capital<-function(Data_Actualizada){
 # Agregar una columna con valores aleatorios entre 0 y 10
 Data_Actualizada$Numero_de_acciones <- sample(0:5, nrow(df_resumen), replace = TRUE)
 
@@ -259,8 +261,8 @@ for (i in 1:nrow(Data_Actualizada)) {
   }
 }
 
-View(Data_Actualizada)
-plot(Data_Actualizada$Capital_final1)
+#View(Data_Actualizada)
+#plot(Data_Actualizada$Capital_final1)
 
 # y estableciendo un capital inicial para la estrategia 2
 capital_inicial_estrategia2 <- capital_inicial
@@ -286,6 +288,16 @@ for (i in 1:nrow(Data_Actualizada)) {
     Data_Actualizada$Capital_final2[i] <- Data_Actualizada$Capital_inicial2[i]
   }
 }
+
+return(Data_Actualizada)
+}# fin de la funcion 
+
+data_actualizada_valores<-simulate_GBM(valor_inicial, mu, sigma, T, dt)
+data_actualizada_o<-dataresume(data_actualizada_valores)
+Data_Actualizada<-estrategias(data_actualizada_o)
+Dt<-tabla_capital(Data_Actualizada)
+View(Dt)
+
 
 View(Data_Actualizada)
 
