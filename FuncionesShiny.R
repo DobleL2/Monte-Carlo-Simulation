@@ -9,9 +9,9 @@ library(TTR)
 #Establecer los Parámetros Iniciales y la Semilla-------------------------------
 
 set.seed(123)  # Para reproducibilidad
-n_dias <- 100   # Número total de días para simular
+n_dias <- 365   # Número total de días para simular
 Po <- 100      # Precio inicial para el primer día
-puntos_dias <- 15
+puntos_dias <- 30
 ncoldata<- puntos_dias + 5
 
 
